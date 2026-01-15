@@ -25,7 +25,7 @@ class Projectile:
         self.damage = damage
         self.owner = owner
         self.target = target
-        self.radius = 6
+        self.radius = 5
         self.alive = True
 
     def update(self, dt: float, gladiators: list["Gladiator"]) -> None:
@@ -78,7 +78,7 @@ class Gladiator:
         self.position = pygame.Vector2(position)
         self.velocity = pygame.Vector2()
         self.speed = speed
-        self.radius = 32
+        self.radius = settings.GLADIATOR_RADIUS
         self.hp = hp
         self.max_hp = hp
         self.armor = armor
@@ -97,6 +97,9 @@ class Gladiator:
         self.last_team_change: float | None = None
         self.has_betrayed_opp = False
         self.has_betrayed_end = False
+        self.shield_active = False
+        self.shield_timer = 0.0
+        self.shield_cooldown = 0.0
 
     @property
     def alive(self) -> bool:
@@ -105,7 +108,16 @@ class Gladiator:
     def distance_to(self, other: "Gladiator") -> float:
         return self.position.distance_to(other.position)
 
-    def update(self, dt: float, gladiators: list["Gladiator"], allow_engage: bool, projectiles: list[Projectile], intent: dict | None = None) -> None:
+    def update(
+        self,
+        dt: float,
+        gladiators: list["Gladiator"],
+        allow_engage: bool,
+        projectiles: list[Projectile],
+        intent: dict | None = None,
+        targeted_by: set[str] | None = None,
+        allow_shield: bool = True,
+    ) -> None:
         if not self.alive:
             return
 
@@ -116,6 +128,19 @@ class Gladiator:
             self.retreat_cooldown = max(0.0, self.retreat_cooldown - dt)
         if self.kite_timer > 0:
             self.kite_timer = max(0.0, self.kite_timer - dt)
+        if self.shield_cooldown > 0:
+            self.shield_cooldown = max(0.0, self.shield_cooldown - dt)
+        if self.shield_active:
+            self.shield_timer = max(0.0, self.shield_timer - dt)
+            if self.shield_timer <= 0:
+                self.shield_active = False
+
+        if allow_shield and self.class_type in ("Fighter", "Tank") and not self.shield_active and self.shield_cooldown <= 0.0:
+            if self._incoming_attack(gladiators, targeted_by or set()):
+                duration, cooldown = self._shield_params()
+                self.shield_active = True
+                self.shield_timer = duration
+                self.shield_cooldown = cooldown
 
         if allow_engage:
             should_retreat = self._should_retreat(gladiators)
@@ -218,7 +243,6 @@ class Gladiator:
                 direction = self._random_dir()
             velocity = direction.normalize() * self.weapon.projectile_speed
             projectiles.append(Projectile(self.position, velocity, self.weapon.damage, self, target))
-
             self.kite_dir = -direction.normalize()
             self.kite_timer = 0.2
         else:
@@ -256,37 +280,61 @@ class Gladiator:
         if dist > limit and dist > 0:
             self.position = settings.ARENA_CENTER + offset.normalize() * limit
 
-    def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+    def draw(
+        self,
+        surface: pygame.Surface,
+        font: pygame.font.Font,
+        fighter_texture: pygame.Surface | None = None,
+        tank_texture: pygame.Surface | None = None,
+        archer_texture: pygame.Surface | None = None,
+    ) -> None:
         color = (80, 80, 80) if not self.alive else self.base_color
-        pygame.draw.circle(surface, color, self.position, self.radius)
+        has_fighter_texture = self.class_type == "Fighter" and fighter_texture is not None
+        has_tank_texture = self.class_type == "Tank" and tank_texture is not None
+        has_archer_texture = self.class_type == "Archer" and archer_texture is not None
+        if not has_fighter_texture and not has_tank_texture and not has_archer_texture:
+            pygame.draw.circle(surface, color, self.position, self.radius)
         if not self.alive:
             return
+        if has_fighter_texture or has_tank_texture or has_archer_texture:
+            if has_fighter_texture:
+                texture = fighter_texture
+            elif has_tank_texture:
+                texture = tank_texture
+            else:
+                texture = archer_texture
+            texture_rect = texture.get_rect(center=(self.position.x, self.position.y))
+            surface.blit(texture, texture_rect)
 
-        bar_width = int(self.radius * 3.0)
-        bar_height = 12
+        bar_width = int(self.radius * 2.6)
+        bar_height = 10
         bar_x = self.position.x - bar_width / 2
         bar_y = self.position.y - self.radius - 18
         pygame.draw.rect(surface, (35, 35, 35), (bar_x, bar_y, bar_width, bar_height))
         hp_ratio = max(0.0, min(1.0, self.hp / max(1, self.max_hp)))
         hp_color = (30, 200, 80) if hp_ratio >= 0.66 else (230, 160, 60) if hp_ratio >= 0.33 else (210, 60, 60)
+        if self.shield_active:
+            gray = int(0.3 * hp_color[0] + 0.59 * hp_color[1] + 0.11 * hp_color[2])
+            hp_color = (gray, gray, gray)
         pygame.draw.rect(surface, hp_color, (bar_x, bar_y, bar_width * hp_ratio, bar_height))
 
         if self.team_id:
             symbol_idx = max(0, (self.team_id - 1) % len(TEAM_SYMBOL_NAMES))
-            symbol_y = bar_y - 12
-            symbol_x = self.position.x
-            if self.last_team_change and time.time() - self.last_team_change < 4.0:
+            symbol_y = bar_y + bar_height / 2
+            symbol_x = bar_x + bar_width + 10
+            if self.last_team_change:
                 sym_color = (200, 40, 40)
             else:
                 sym_color = (20, 20, 20)
-            self._draw_symbol(surface, symbol_idx, symbol_x, symbol_y, size=16, color=sym_color, filled=True)
+            self._draw_symbol(surface, symbol_idx, symbol_x, symbol_y, size=14, color=sym_color, filled=True)
 
-        name_color = (245, 245, 245) if self.class_type in ("Tank", "Fighter") else (10, 10, 10)
+        name_color = (0, 0, 0)
+        label = self.name[1:] if self.name.startswith("G") else self.name
         prev_bold = font.get_bold()
         font.set_bold(True)
-        name_text = font.render(self.name, True, name_color)
+        name_text = font.render(label, True, name_color)
         font.set_bold(prev_bold)
-        name_rect = name_text.get_rect(center=(self.position.x, self.position.y))
+        name_rect = name_text.get_rect(midright=(bar_x - 6, bar_y + bar_height / 2))
         surface.blit(name_text, name_rect)
 
     def _draw_symbol(self, surface: pygame.Surface, idx: int, cx: float, cy: float, size: int, color: tuple[int, int, int], filled: bool = False) -> None:
@@ -325,6 +373,34 @@ class Gladiator:
         return pygame.Vector2(math.cos(angle), math.sin(angle))
 
     def apply_damage(self, amount: int, attacker: "Gladiator") -> None:
+        if self.shield_active:
+            self.shield_active = False
+            self.shield_timer = 0.0
+            self.last_attacker = attacker
+            self.last_hit_time = time.time()
+            return
         self.hp -= amount
         self.last_attacker = attacker
         self.last_hit_time = time.time()
+
+    def _incoming_attack(self, gladiators: list["Gladiator"], targeted_by: set[str]) -> bool:
+        for other in gladiators:
+            if other is self or not other.alive:
+                continue
+            if self.team_id is not None and other.team_id == self.team_id:
+                continue
+            if targeted_by and other.name not in targeted_by:
+                continue
+            distance = self.distance_to(other)
+            if other.weapon.ranged:
+                attack_thresh = other.weapon.range * 0.9
+            else:
+                attack_thresh = self.radius + other.radius + 2
+            if distance <= attack_thresh:
+                return True
+        return False
+
+    def _shield_params(self) -> tuple[float, float]:
+        if self.class_type == "Tank":
+            return 0.45, 2.2
+        return 0.35, 1.3

@@ -1,0 +1,20 @@
+winner,Triangle team wins
+elapsed_seconds,29.35
+
+name,class,team,alive,hp,max_hp,armor,weapon,weapon_range,weapon_damage,weapon_cooldown,weapon_ranged
+G1,Tank,,no,-5,120,25,Axe,65,32,1.2,no
+G2,Fighter,,no,-4,100,12,Sword,70,26,1.0,no
+G3,Tank,1,no,-6,120,25,Axe,65,32,1.2,no
+G4,Archer,4,no,-10,75,6,Bow,240,18,1.1,yes
+G5,Archer,,no,-2,75,6,Bow,240,18,1.1,yes
+G6,Archer,3,no,-28,75,6,Bow,240,18,1.1,yes
+G7,Fighter,,no,-5,100,12,Sword,70,26,1.0,no
+G8,Archer,3,no,0,75,6,Bow,240,18,1.1,yes
+G9,Tank,2,no,-7,120,25,Axe,65,32,1.2,no
+G10,Tank,2,no,-13,120,25,Axe,65,32,1.2,no
+G11,Fighter,,no,-9,100,12,Sword,70,26,1.0,no
+G12,Archer,2,no,-19,75,6,Bow,240,18,1.1,yes
+G13,Tank,1,no,-11,120,25,Axe,65,32,1.2,no
+G14,Tank,3,yes,42,120,25,Axe,65,32,1.2,no
+G15,Tank,,no,-4,120,25,Axe,65,32,1.2,no
+G16,Tank,4,no,-1,120,25,Axe,65,32,1.2,no

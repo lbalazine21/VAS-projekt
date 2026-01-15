@@ -1,15 +1,16 @@
 import time
+import os
+import csv
 import threading
 import random
 import pygame
 import asyncio
 import settings
-from arena import draw_arena, draw_offer_lines, recalc_arena, spawn_gladiators, team_label
-from entities import Gladiator, Projectile, TEAM_SYMBOL_NAMES
+from arena import build_sand_texture, build_wall_texture, draw_arena, draw_offer_lines, recalc_arena, spawn_gladiators, team_label
+from entities import Projectile, TEAM_SYMBOL_NAMES
 from agents import start_agents, stop_agents
-from settings import build_state, draw_timer, render_loading
+from settings import build_state, draw_timer, draw_wood_panel, render_loading
 from settings import (
-    BG_COLOR,
     FPS,
     GLADIATOR_COUNT,
     KEY_ESCAPE,
@@ -19,20 +20,82 @@ from settings import (
     LOADING_TEXT,
     REFRESHING_TEXT,
     RESTARTING_TEXT,
-    draw_winner,
 )
 
 
 def run() -> None:
     pygame.init()
     info = pygame.display.Info()
-    target_size = (int(info.current_w * 0.8), int(info.current_h * 0.8))
-    screen = pygame.display.set_mode(target_size)
+    target_w = int(info.current_w * 0.8)
+    target_h = int(target_w * (info.current_h / info.current_w))
+    target_size = (target_w, target_h)
+    screen = pygame.display.set_mode(target_size, pygame.RESIZABLE)
     recalc_arena(*target_size)
     pygame.display.set_caption("Gladiator Simulation")
     clock = pygame.time.Clock()
-    font = pygame.font.SysFont("arial", 20)
-    big_font = pygame.font.SysFont("arial", 28)
+    font = pygame.font.SysFont("times new roman", 18)
+    big_font = pygame.font.SysFont("times new roman", 36)
+
+    def build_backgrounds(size: tuple[int, int]):
+        bg_image = pygame.image.load("art/rocks.png").convert()
+        bg_scale = 0.5
+        scaled_size = (
+            max(1, int(bg_image.get_width() * bg_scale)),
+            max(1, int(bg_image.get_height() * bg_scale)),
+        )
+        bg_image = pygame.transform.smoothscale(bg_image, scaled_size)
+        bg_surface = pygame.Surface(size)
+        tile_w, tile_h = bg_image.get_size()
+        for y in range(0, size[1], tile_h):
+            for x in range(0, size[0], tile_w):
+                bg_surface.blit(bg_image, (x, y))
+
+        wall_texture = None
+        if settings.WALL_TEXTURE_PATH:
+            try:
+                wall_image = pygame.image.load(settings.WALL_TEXTURE_PATH).convert()
+                wall_texture = build_wall_texture(
+                    wall_image,
+                    size,
+                    settings.WALL_TEXTURE_SCALE,
+                    settings.WALL_TEXTURE_DARKEN,
+                )
+            except Exception:
+                wall_texture = None
+
+        sand_texture = None
+        if settings.SAND_TEXTURE_PATH:
+            try:
+                sand_image = pygame.image.load(settings.SAND_TEXTURE_PATH).convert()
+                sand_texture = build_sand_texture(sand_image, size, settings.SAND_TEXTURE_SCALE)
+            except Exception:
+                sand_texture = None
+        return bg_surface, wall_texture, sand_texture
+
+    bg_surface, wall_texture, sand_texture = build_backgrounds(target_size)
+    fighter_texture = None
+    try:
+        fighter_texture = pygame.image.load("art/fighter.png").convert_alpha()
+    except Exception:
+        fighter_texture = None
+    tank_texture = None
+    try:
+        tank_texture = pygame.image.load("art/tank.png").convert_alpha()
+    except Exception:
+        tank_texture = None
+    archer_texture = None
+    try:
+        archer_texture = pygame.image.load("art/archer.png").convert_alpha()
+    except Exception:
+        archer_texture = None
+    texture_size = int(settings.GLADIATOR_RADIUS * 2 * settings.GLADIATOR_TEXTURE_SCALE)
+    if texture_size > 0:
+        if fighter_texture is not None:
+            fighter_texture = pygame.transform.smoothscale(fighter_texture, (texture_size, texture_size))
+        if tank_texture is not None:
+            tank_texture = pygame.transform.smoothscale(tank_texture, (texture_size, texture_size))
+        if archer_texture is not None:
+            archer_texture = pygame.transform.smoothscale(archer_texture, (texture_size, texture_size))
 
     gladiator_count = GLADIATOR_COUNT
     gladiators = spawn_gladiators(gladiator_count)
@@ -165,6 +228,9 @@ def run() -> None:
     betrayal_teams_done_opp: set[int] = set()
     betrayal_teams_done_end: set[int] = set()
     betrayal_global_opp_done = False
+    export_button_rect: pygame.Rect | None = None
+    export_message_time: float | None = None
+    export_message_name: str | None = None
 
     start_spade_agents_blocking("Loading")
 
@@ -196,6 +262,66 @@ def run() -> None:
                         paused = False
                     else:
                         paused = not paused
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and finished and export_button_rect:
+                if export_button_rect.collidepoint(event.pos):
+                    os.makedirs("logs", exist_ok=True)
+                    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+                    filename = f"logs/results_{timestamp}.csv"
+                    with open(filename, "w", newline="", encoding="utf-8") as csvfile:
+                        writer = csv.writer(csvfile)
+                        writer.writerow(["winner", winner_text or ""])
+                        writer.writerow(["elapsed_seconds", f"{elapsed:.2f}"])
+                        writer.writerow([])
+                        writer.writerow(
+                            [
+                                "name",
+                                "class",
+                                "team",
+                                "alive",
+                                "hp",
+                                "max_hp",
+                                "armor",
+                                "weapon",
+                                "weapon_range",
+                                "weapon_damage",
+                                "weapon_cooldown",
+                                "weapon_ranged",
+                            ]
+                        )
+                        for g in gladiators:
+                            writer.writerow(
+                                [
+                                    g.name,
+                                    g.class_type,
+                                    g.team_id if g.team_id is not None else "",
+                                    "yes" if g.alive else "no",
+                                    g.hp,
+                                    g.max_hp,
+                                    g.armor,
+                                    g.weapon.name,
+                                    g.weapon.range,
+                                    g.weapon.damage,
+                                    g.weapon.cooldown,
+                                    "yes" if g.weapon.ranged else "no",
+                                ]
+                            )
+                    export_message_time = time.time()
+                    export_message_name = os.path.basename(filename)
+            if event.type == pygame.VIDEORESIZE:
+                target_size = (event.w, event.h)
+                screen = pygame.display.set_mode(target_size, pygame.RESIZABLE)
+                old_center = settings.ARENA_CENTER.copy()
+                old_radius = settings.ARENA_RADIUS
+                recalc_arena(*target_size)
+                scale = settings.ARENA_RADIUS / max(1, old_radius)
+                for g in gladiators:
+                    offset = g.position - old_center
+                    g.position = settings.ARENA_CENTER + offset * scale
+                    g._clamp_to_arena()
+                for proj in projectiles:
+                    offset = proj.position - old_center
+                    proj.position = settings.ARENA_CENTER + offset * scale
+                bg_surface, wall_texture, sand_texture = build_backgrounds(target_size)
 
         if started and not finished and not paused:
             if engage_delay > 0:
@@ -382,6 +508,19 @@ def run() -> None:
                     winner_text = "Everyone fell."
             else:
                 alive_names = {g.name for g in living}
+                targeting: dict[str, str] = {}
+                for name, entry in intents.items():
+                    t = entry.get("time", 0)
+                    if time.time() - t >= 2.0:
+                        continue
+                    candidate = entry.get("data")
+                    if (
+                        candidate
+                        and not candidate.get("action")
+                        and candidate.get("attack")
+                        and candidate.get("target") in alive_names
+                    ):
+                        targeting[name] = candidate.get("target")
                 for gladiator in gladiators:
                     intent_entry = intents.get(gladiator.name) if spade_enabled else None
                     intent = None
@@ -396,26 +535,85 @@ def run() -> None:
                                 intent = candidate
                         else:
                             intents.pop(gladiator.name, None)
-                    gladiator.update(dt, gladiators, allow_engage=engage_delay <= 0, projectiles=projectiles, intent=intent)
+                    targeted_by = {attacker for attacker, target in targeting.items() if target == gladiator.name}
+                    gladiator.update(
+                        dt,
+                        gladiators,
+                        allow_engage=engage_delay <= 0,
+                        projectiles=projectiles,
+                        intent=intent,
+                        targeted_by=targeted_by,
+                        allow_shield=engage_delay <= 0 and not betrayal_pending,
+                    )
                 for proj in projectiles:
                     proj.update(dt, gladiators)
                 projectiles = [p for p in projectiles if p.alive]
 
-        screen.fill(BG_COLOR)
-        draw_arena(screen)
+        screen.blit(bg_surface, (0, 0))
+        draw_arena(screen, wall_texture, sand_texture)
         for proj in projectiles:
             proj.draw(screen)
 
         draw_offer_lines(screen, offer_visuals, gladiators)
         for gladiator in gladiators:
-            gladiator.draw(screen, font)
+            gladiator.draw(screen, font, fighter_texture, tank_texture, archer_texture)
         if finished:
-            prev_bold = big_font.get_bold()
-            big_font.set_bold(True)
-            draw_winner(screen, big_font, winner_text)
-            big_font.set_bold(prev_bold)
+            winner_label = (winner_text or settings.WINNER_FALLBACK_TEXT).upper()
+            winner_text_surf = big_font.render(winner_label, True, (255, 255, 255))
+            button_text_surf = font.render("Export", True, (0, 0, 0))
+            button_padding_x = 18
+            button_padding_y = 8
+            button_rect = pygame.Rect(
+                0,
+                0,
+                button_text_surf.get_width() + button_padding_x * 2,
+                button_text_surf.get_height() + button_padding_y * 2,
+            )
+            export_text_surf = None
+            if export_message_time and time.time() - export_message_time < 2.5:
+                name = export_message_name or "results.csv"
+                export_text_surf = font.render(f'Results exported in "{name}"', True, (255, 255, 255))
 
-        draw_timer(screen, big_font, elapsed)
+            spacing_y = 10
+            content_w = max(
+                winner_text_surf.get_width(),
+                button_rect.width,
+                export_text_surf.get_width() if export_text_surf else 0,
+            )
+            content_h = winner_text_surf.get_height() + button_rect.height
+            if export_text_surf:
+                content_h += spacing_y + export_text_surf.get_height()
+            content_h += spacing_y
+
+            panel_padding_x = 26
+            panel_padding_y = 18
+            panel_rect = pygame.Rect(
+                0,
+                0,
+                content_w + panel_padding_x * 2,
+                content_h + panel_padding_y * 2,
+            )
+            panel_rect.center = (settings.SCREEN_WIDTH / 2, settings.SCREEN_HEIGHT / 2)
+            draw_wood_panel(screen, panel_rect, radius=12)
+
+            y = panel_rect.top + panel_padding_y
+            winner_rect = winner_text_surf.get_rect(midtop=(panel_rect.centerx, y))
+            screen.blit(winner_text_surf, winner_rect)
+
+            y = winner_rect.bottom + spacing_y
+            button_rect.midtop = (panel_rect.centerx, y)
+            pygame.draw.rect(screen, (255, 255, 255), button_rect, border_radius=8)
+            screen.blit(button_text_surf, button_text_surf.get_rect(center=button_rect.center))
+            export_button_rect = button_rect
+
+            if export_text_surf:
+                y = button_rect.bottom + spacing_y
+                export_rect = export_text_surf.get_rect(midtop=(panel_rect.centerx, y))
+                screen.blit(export_text_surf, export_rect)
+        else:
+            export_button_rect = None
+
+        draw_timer(screen, font, elapsed)
 
         pygame.display.flip()
 

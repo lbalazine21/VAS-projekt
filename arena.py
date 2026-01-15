@@ -47,15 +47,80 @@ def recalc_arena(width: int, height: int) -> int:
     return settings.ARENA_RADIUS
 
 
-def draw_arena(surface: pygame.Surface) -> None:
+def draw_arena(
+    surface: pygame.Surface,
+    wall_texture: pygame.Surface | None = None,
+    sand_texture: pygame.Surface | None = None,
+) -> None:
     brick_color = (165, 120, 80)
     wall_width = 54
     brick_outer_radius = settings.ARENA_RADIUS + wall_width + 12
     brick_inner_radius = brick_outer_radius - wall_width
 
     sand_color = settings.SAND_COLOR
-    pygame.draw.circle(surface, sand_color, settings.ARENA_CENTER, brick_inner_radius, width=0)
-    pygame.draw.circle(surface, brick_color, settings.ARENA_CENTER, brick_outer_radius, width=wall_width)
+    if sand_texture is not None:
+        surface.blit(sand_texture, (0, 0))
+    else:
+        pygame.draw.circle(surface, sand_color, settings.ARENA_CENTER, brick_inner_radius, width=0)
+    if wall_texture is not None:
+        surface.blit(wall_texture, (0, 0))
+    else:
+        pygame.draw.circle(surface, brick_color, settings.ARENA_CENTER, brick_outer_radius, width=wall_width)
+
+
+def build_wall_texture(
+    texture: pygame.Surface,
+    size: tuple[int, int],
+    scale: float = 1.0,
+    darken: float = 1.0,
+) -> pygame.Surface:
+    wall_width = 54
+    brick_outer_radius = settings.ARENA_RADIUS + wall_width + 12
+    brick_inner_radius = brick_outer_radius - wall_width
+    if scale != 1.0:
+        scaled_size = (
+            max(1, int(texture.get_width() * scale)),
+            max(1, int(texture.get_height() * scale)),
+        )
+        texture = pygame.transform.smoothscale(texture, scaled_size)
+
+    tiled = pygame.Surface(size, pygame.SRCALPHA)
+    tile_w, tile_h = texture.get_size()
+    for y in range(0, size[1], tile_h):
+        for x in range(0, size[0], tile_w):
+            tiled.blit(texture, (x, y))
+    if darken < 1.0:
+        level = max(0, min(255, int(255 * darken)))
+        tiled.fill((level, level, level, 255), special_flags=pygame.BLEND_RGBA_MULT)
+
+    mask = pygame.Surface(size, pygame.SRCALPHA)
+    pygame.draw.circle(mask, (255, 255, 255, 255), settings.ARENA_CENTER, brick_outer_radius)
+    pygame.draw.circle(mask, (0, 0, 0, 0), settings.ARENA_CENTER, brick_inner_radius)
+    tiled.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    return tiled
+
+
+def build_sand_texture(texture: pygame.Surface, size: tuple[int, int], scale: float = 1.0) -> pygame.Surface:
+    wall_width = 54
+    brick_outer_radius = settings.ARENA_RADIUS + wall_width + 12
+    brick_inner_radius = brick_outer_radius - wall_width
+    if scale != 1.0:
+        scaled_size = (
+            max(1, int(texture.get_width() * scale)),
+            max(1, int(texture.get_height() * scale)),
+        )
+        texture = pygame.transform.smoothscale(texture, scaled_size)
+
+    tiled = pygame.Surface(size, pygame.SRCALPHA)
+    tile_w, tile_h = texture.get_size()
+    for y in range(0, size[1], tile_h):
+        for x in range(0, size[0], tile_w):
+            tiled.blit(texture, (x, y))
+
+    mask = pygame.Surface(size, pygame.SRCALPHA)
+    pygame.draw.circle(mask, (255, 255, 255, 255), settings.ARENA_CENTER, brick_inner_radius)
+    tiled.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    return tiled
 
 
 def spawn_gladiators(count: int, class_list: list[str] | None = None) -> list[Gladiator]:

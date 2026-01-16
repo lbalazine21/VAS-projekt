@@ -4,23 +4,22 @@ import pygame
 import settings
 from entities import Gladiator, Weapon
 
+
+# DEFINIRANJE RJEČNIKA KLASA
 CLASS_CONFIGS = {
     "Archer": {
-        "color": (235, 235, 235),
         "hp": 75,
         "armor": 6,
         "speed": 125.0,
         "weapon": Weapon("Bow", damage=18, range_px=240, cooldown=1.1, ranged=True, projectile_speed=520.0),
     },
     "Fighter": {
-        "color": (139, 92, 58),
         "hp": 100,
         "armor": 12,
         "speed": 110.0,
         "weapon": Weapon("Sword", damage=26, range_px=70, cooldown=1.0),
     },
     "Tank": {
-        "color": (40, 40, 40),
         "hp": 120,
         "armor": 25,
         "speed": 90.0,
@@ -39,6 +38,7 @@ def team_label(team_id: int | None) -> str:
     return f"Team {team_id}"
 
 
+# IZRAČUNAVANJE DIMENZIJA ARENE
 def recalc_arena(width: int, height: int) -> int:
     settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT = width, height
     settings.ARENA_CENTER.update(width / 2, height / 2 + 30)
@@ -47,32 +47,25 @@ def recalc_arena(width: int, height: int) -> int:
     return settings.ARENA_RADIUS
 
 
+# CRTANJE GLADIJATORSKE ARENE
 def draw_arena(
     surface: pygame.Surface,
-    wall_texture: pygame.Surface | None = None,
-    sand_texture: pygame.Surface | None = None,
+    wall_texture: pygame.Surface,
+    sand_texture: pygame.Surface,
 ) -> None:
-    brick_color = (165, 120, 80)
     wall_width = 54
     brick_outer_radius = settings.ARENA_RADIUS + wall_width + 12
     brick_inner_radius = brick_outer_radius - wall_width
 
-    sand_color = settings.SAND_COLOR
-    if sand_texture is not None:
-        surface.blit(sand_texture, (0, 0))
-    else:
-        pygame.draw.circle(surface, sand_color, settings.ARENA_CENTER, brick_inner_radius, width=0)
-    if wall_texture is not None:
-        surface.blit(wall_texture, (0, 0))
-    else:
-        pygame.draw.circle(surface, brick_color, settings.ARENA_CENTER, brick_outer_radius, width=wall_width)
+    surface.blit(sand_texture, (0, 0))
+    surface.blit(wall_texture, (0, 0))
 
 
+# KREIRANJE TEKSTURE ZIDA
 def build_wall_texture(
     texture: pygame.Surface,
     size: tuple[int, int],
     scale: float = 1.0,
-    darken: float = 1.0,
 ) -> pygame.Surface:
     wall_width = 54
     brick_outer_radius = settings.ARENA_RADIUS + wall_width + 12
@@ -89,9 +82,6 @@ def build_wall_texture(
     for y in range(0, size[1], tile_h):
         for x in range(0, size[0], tile_w):
             tiled.blit(texture, (x, y))
-    if darken < 1.0:
-        level = max(0, min(255, int(255 * darken)))
-        tiled.fill((level, level, level, 255), special_flags=pygame.BLEND_RGBA_MULT)
 
     mask = pygame.Surface(size, pygame.SRCALPHA)
     pygame.draw.circle(mask, (255, 255, 255, 255), settings.ARENA_CENTER, brick_outer_radius)
@@ -100,6 +90,7 @@ def build_wall_texture(
     return tiled
 
 
+# KREIRANJE TEKSTURE PIJESKA
 def build_sand_texture(texture: pygame.Surface, size: tuple[int, int], scale: float = 1.0) -> pygame.Surface:
     wall_width = 54
     brick_outer_radius = settings.ARENA_RADIUS + wall_width + 12
@@ -123,6 +114,7 @@ def build_sand_texture(texture: pygame.Surface, size: tuple[int, int], scale: fl
     return tiled
 
 
+# POSTAVLJANJE GLADIJATORA UNUTAR ARENE
 def spawn_gladiators(count: int, class_list: list[str] | None = None) -> list[Gladiator]:
     gladiators: list[Gladiator] = []
     edge_radius = settings.ARENA_RADIUS - 60
@@ -139,7 +131,6 @@ def spawn_gladiators(count: int, class_list: list[str] | None = None) -> list[Gl
                 name=f"G{idx + 1}",
                 position=pos,
                 class_type=class_name,
-                base_color=cfg["color"],
                 hp=cfg["hp"],
                 armor=cfg["armor"],
                 speed=cfg["speed"],

@@ -4,10 +4,10 @@ import math
 import time
 import pygame
 import settings
-
 TEAM_SYMBOL_NAMES = ["Square", "Diamond", "Triangle", "Star"]
 
 
+# INICIJALIZIRANJE KLASE ORUŽJA
 class Weapon:
     def __init__(self, name: str, damage: int, range_px: float, cooldown: float, ranged: bool = False, projectile_speed: float = 0.0):
         self.name = name
@@ -18,6 +18,7 @@ class Weapon:
         self.projectile_speed = projectile_speed
 
 
+# INICIJALIZIRANJE KLASE PROJEKTILA ORUŽJA
 class Projectile:
     def __init__(self, position: pygame.Vector2, velocity: pygame.Vector2, damage: int, owner: "Gladiator", target: "Gladiator"):
         self.position = pygame.Vector2(position)
@@ -28,7 +29,7 @@ class Projectile:
         self.radius = 5
         self.alive = True
 
-    def update(self, dt: float, gladiators: list["Gladiator"]) -> None:
+    def update(self, dt: float) -> None:
         if not self.alive:
             return
         self.position += self.velocity * dt
@@ -65,7 +66,6 @@ class Gladiator:
         name: str,
         position: tuple[float, float],
         class_type: str,
-        base_color: tuple[int, int, int],
         hp: int,
         armor: int,
         speed: float,
@@ -73,7 +73,6 @@ class Gladiator:
     ):
         self.name = name
         self.class_type = class_type
-        self.base_color = base_color
         self.team_id: int | None = None
         self.position = pygame.Vector2(position)
         self.velocity = pygame.Vector2()
@@ -287,15 +286,30 @@ class Gladiator:
         fighter_texture: pygame.Surface | None = None,
         tank_texture: pygame.Surface | None = None,
         archer_texture: pygame.Surface | None = None,
+        fighter_texture_dead: pygame.Surface | None = None,
+        tank_texture_dead: pygame.Surface | None = None,
+        archer_texture_dead: pygame.Surface | None = None,
     ) -> None:
-        color = (80, 80, 80) if not self.alive else self.base_color
         has_fighter_texture = self.class_type == "Fighter" and fighter_texture is not None
         has_tank_texture = self.class_type == "Tank" and tank_texture is not None
         has_archer_texture = self.class_type == "Archer" and archer_texture is not None
-        if not has_fighter_texture and not has_tank_texture and not has_archer_texture:
-            pygame.draw.circle(surface, color, self.position, self.radius)
         if not self.alive:
+            if self.class_type == "Fighter" and fighter_texture_dead is not None:
+                texture_rect = fighter_texture_dead.get_rect(center=(self.position.x, self.position.y))
+                surface.blit(fighter_texture_dead, texture_rect)
+                return
+            if self.class_type == "Tank" and tank_texture_dead is not None:
+                texture_rect = tank_texture_dead.get_rect(center=(self.position.x, self.position.y))
+                surface.blit(tank_texture_dead, texture_rect)
+                return
+            if self.class_type == "Archer" and archer_texture_dead is not None:
+                texture_rect = archer_texture_dead.get_rect(center=(self.position.x, self.position.y))
+                surface.blit(archer_texture_dead, texture_rect)
+                return
+            pygame.draw.circle(surface, (80, 80, 80), self.position, self.radius)
             return
+        if not has_fighter_texture and not has_tank_texture and not has_archer_texture:
+            pygame.draw.circle(surface, (80, 80, 80), self.position, self.radius)
         if has_fighter_texture or has_tank_texture or has_archer_texture:
             if has_fighter_texture:
                 texture = fighter_texture
@@ -317,6 +331,7 @@ class Gladiator:
             gray = int(0.3 * hp_color[0] + 0.59 * hp_color[1] + 0.11 * hp_color[2])
             hp_color = (gray, gray, gray)
         pygame.draw.rect(surface, hp_color, (bar_x, bar_y, bar_width * hp_ratio, bar_height))
+        pygame.draw.rect(surface, (0, 0, 0), (bar_x, bar_y, bar_width, bar_height), width=1)
 
         if self.team_id:
             symbol_idx = max(0, (self.team_id - 1) % len(TEAM_SYMBOL_NAMES))
@@ -362,11 +377,8 @@ class Gladiator:
             ]
             pygame.draw.polygon(surface, color, points, width=width)
         else:
-            half = size // 2
-            pygame.draw.line(surface, color, (cx - half, cy), (cx + half, cy), width=3 if filled else 2)
-            pygame.draw.line(surface, color, (cx, cy - half), (cx, cy + half), width=3 if filled else 2)
-            pygame.draw.line(surface, color, (cx - half + 1, cy - half + 1), (cx + half - 1, cy + half - 1), width=3 if filled else 2)
-            pygame.draw.line(surface, color, (cx - half + 1, cy + half - 1), (cx + half - 1, cy - half + 1), width=3 if filled else 2)
+            radius = size // 2
+            pygame.draw.circle(surface, color, (cx, cy), radius, width=0 if filled else 2)
 
     def _random_dir(self) -> pygame.Vector2:
         angle = random.uniform(0, 2 * math.pi)

@@ -50,26 +50,15 @@ def run() -> None:
             for x in range(0, size[0], tile_w):
                 bg_surface.blit(bg_image, (x, y))
 
-        wall_texture = None
-        if settings.WALL_TEXTURE_PATH:
-            try:
-                wall_image = pygame.image.load(settings.WALL_TEXTURE_PATH).convert()
-                wall_texture = build_wall_texture(
-                    wall_image,
-                    size,
-                    settings.WALL_TEXTURE_SCALE,
-                    settings.WALL_TEXTURE_DARKEN,
-                )
-            except Exception:
-                wall_texture = None
+        wall_image = pygame.image.load(settings.WALL_TEXTURE_PATH).convert()
+        wall_texture = build_wall_texture(
+            wall_image,
+            size,
+            settings.WALL_TEXTURE_SCALE,
+        )
 
-        sand_texture = None
-        if settings.SAND_TEXTURE_PATH:
-            try:
-                sand_image = pygame.image.load(settings.SAND_TEXTURE_PATH).convert()
-                sand_texture = build_sand_texture(sand_image, size, settings.SAND_TEXTURE_SCALE)
-            except Exception:
-                sand_texture = None
+        sand_image = pygame.image.load(settings.SAND_TEXTURE_PATH).convert()
+        sand_texture = build_sand_texture(sand_image, size, settings.SAND_TEXTURE_SCALE)
         return bg_surface, wall_texture, sand_texture
 
     bg_surface, wall_texture, sand_texture = build_backgrounds(target_size)
@@ -96,6 +85,23 @@ def run() -> None:
             tank_texture = pygame.transform.smoothscale(tank_texture, (texture_size, texture_size))
         if archer_texture is not None:
             archer_texture = pygame.transform.smoothscale(archer_texture, (texture_size, texture_size))
+    def make_grayscale(surface: pygame.Surface) -> pygame.Surface:
+        gray = surface.copy()
+        try:
+            arr = pygame.surfarray.pixels3d(gray)
+            lum = (0.299 * arr[:, :, 0] + 0.587 * arr[:, :, 1] + 0.114 * arr[:, :, 2]).astype(arr.dtype)
+            arr[:, :, 0] = lum
+            arr[:, :, 1] = lum
+            arr[:, :, 2] = lum
+            del arr
+            gray.fill((80, 80, 80, 255), special_flags=pygame.BLEND_RGBA_MULT)
+        except Exception:
+            gray.fill((70, 70, 70, 255), special_flags=pygame.BLEND_RGBA_MULT)
+        return gray
+
+    fighter_texture_dead = make_grayscale(fighter_texture) if fighter_texture is not None else None
+    tank_texture_dead = make_grayscale(tank_texture) if tank_texture is not None else None
+    archer_texture_dead = make_grayscale(archer_texture) if archer_texture is not None else None
 
     gladiator_count = GLADIATOR_COUNT
     gladiators = spawn_gladiators(gladiator_count)
@@ -546,7 +552,7 @@ def run() -> None:
                         allow_shield=engage_delay <= 0 and not betrayal_pending,
                     )
                 for proj in projectiles:
-                    proj.update(dt, gladiators)
+                    proj.update(dt)
                 projectiles = [p for p in projectiles if p.alive]
 
         screen.blit(bg_surface, (0, 0))
@@ -556,7 +562,16 @@ def run() -> None:
 
         draw_offer_lines(screen, offer_visuals, gladiators)
         for gladiator in gladiators:
-            gladiator.draw(screen, font, fighter_texture, tank_texture, archer_texture)
+            gladiator.draw(
+                screen,
+                font,
+                fighter_texture,
+                tank_texture,
+                archer_texture,
+                fighter_texture_dead,
+                tank_texture_dead,
+                archer_texture_dead,
+            )
         if finished:
             winner_label = (winner_text or settings.WINNER_FALLBACK_TEXT).upper()
             winner_text_surf = big_font.render(winner_label, True, (255, 255, 255))

@@ -1,0 +1,20 @@
+winner,Square team wins
+elapsed_seconds,25.21
+
+name,class,team,alive,hp,max_hp,armor,weapon,weapon_range,weapon_damage,weapon_cooldown,weapon_ranged
+G1,Fighter,,no,-21,100,12,Sword,70,26,1.0,no
+G2,Archer,,no,-12,75,6,Bow,240,18,1.1,yes
+G3,Tank,2,no,-1,120,25,Axe,65,32,1.2,no
+G4,Fighter,,no,-18,100,12,Sword,70,26,1.0,no
+G5,Fighter,2,no,-3,100,12,Sword,70,26,1.0,no
+G6,Fighter,,no,-23,100,12,Sword,70,26,1.0,no
+G7,Fighter,,no,-5,100,12,Sword,70,26,1.0,no
+G8,Tank,1,yes,1,120,25,Axe,65,32,1.2,no
+G9,Fighter,,no,-19,100,12,Sword,70,26,1.0,no
+G10,Tank,2,no,-17,120,25,Axe,65,32,1.2,no
+G11,Fighter,,no,-20,100,12,Sword,70,26,1.0,no
+G12,Tank,,no,-15,120,25,Axe,65,32,1.2,no
+G13,Tank,1,no,-21,120,25,Axe,65,32,1.2,no
+G14,Fighter,2,no,-14,100,12,Sword,70,26,1.0,no
+G15,Tank,,no,-6,120,25,Axe,65,32,1.2,no
+G16,Archer,,no,-25,75,6,Bow,240,18,1.1,yes

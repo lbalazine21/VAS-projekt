@@ -4,7 +4,6 @@ import pygame
 import settings
 from entities import Gladiator, Weapon
 
-
 # DEFINIRANJE RJEČNIKA KLASA
 CLASS_CONFIGS = {
     "Archer": {
@@ -27,7 +26,7 @@ CLASS_CONFIGS = {
     },
 }
 
-
+# IMENOVANJE TIMOVA
 def team_label(team_id: int | None) -> str:
     from entities import TEAM_SYMBOL_NAMES
 
@@ -37,7 +36,6 @@ def team_label(team_id: int | None) -> str:
         return f"{TEAM_SYMBOL_NAMES[team_id - 1]} team"
     return f"Team {team_id}"
 
-
 # IZRAČUNAVANJE DIMENZIJA ARENE
 def recalc_arena(width: int, height: int) -> int:
     settings.SCREEN_WIDTH, settings.SCREEN_HEIGHT = width, height
@@ -45,7 +43,6 @@ def recalc_arena(width: int, height: int) -> int:
     margin = 140
     settings.ARENA_RADIUS = max(120, min(width, height) // 2 - margin)
     return settings.ARENA_RADIUS
-
 
 # CRTANJE GLADIJATORSKE ARENE
 def draw_arena(
@@ -59,7 +56,6 @@ def draw_arena(
 
     surface.blit(sand_texture, (0, 0))
     surface.blit(wall_texture, (0, 0))
-
 
 # KREIRANJE TEKSTURE ZIDA
 def build_wall_texture(
@@ -89,7 +85,6 @@ def build_wall_texture(
     tiled.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
     return tiled
 
-
 # KREIRANJE TEKSTURE PIJESKA
 def build_sand_texture(texture: pygame.Surface, size: tuple[int, int], scale: float = 1.0) -> pygame.Surface:
     wall_width = 54
@@ -112,7 +107,6 @@ def build_sand_texture(texture: pygame.Surface, size: tuple[int, int], scale: fl
     pygame.draw.circle(mask, (255, 255, 255, 255), settings.ARENA_CENTER, brick_inner_radius)
     tiled.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
     return tiled
-
 
 # POSTAVLJANJE GLADIJATORA UNUTAR ARENE
 def spawn_gladiators(count: int, class_list: list[str] | None = None) -> list[Gladiator]:
@@ -139,7 +133,7 @@ def spawn_gladiators(count: int, class_list: list[str] | None = None) -> list[Gl
         )
     return gladiators
 
-
+# CRTANJE LINIJA PREGOVORA IZMEĐU AGENATA
 def draw_offer_lines(surface: pygame.Surface, offer_visuals: list, gladiators: list[Gladiator]) -> None:
     for v in offer_visuals:
         frm = next((g for g in gladiators if g.name == v["from"]), None)

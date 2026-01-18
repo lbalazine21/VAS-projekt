@@ -1,0 +1,20 @@
+winner,Diamond team wins
+elapsed_seconds,36.80
+
+name,class,team,alive,hp,max_hp,armor,weapon,weapon_range,weapon_damage,weapon_cooldown,weapon_ranged
+G1,Fighter,,no,-7,100,12,Sword,70,26,1.0,no
+G2,Tank,1,no,-12,120,25,Axe,65,32,1.2,no
+G3,Fighter,4,no,-7,100,12,Sword,70,26,1.0,no
+G4,Fighter,2,yes,5,100,12,Sword,70,26,1.0,no
+G5,Archer,3,no,-4,75,6,Bow,240,18,1.1,yes
+G6,Fighter,,no,-3,100,12,Sword,70,26,1.0,no
+G7,Fighter,1,no,-12,100,12,Sword,70,26,1.0,no
+G8,Fighter,2,no,-5,100,12,Sword,70,26,1.0,no
+G9,Archer,,no,-15,75,6,Bow,240,18,1.1,yes
+G10,Archer,,no,-19,75,6,Bow,240,18,1.1,yes
+G11,Archer,3,no,-23,75,6,Bow,240,18,1.1,yes
+G12,Archer,,no,-22,75,6,Bow,240,18,1.1,yes
+G13,Tank,4,no,-18,120,25,Axe,65,32,1.2,no
+G14,Tank,4,no,-5,120,25,Axe,65,32,1.2,no
+G15,Fighter,,no,-11,100,12,Sword,70,26,1.0,no
+G16,Archer,1,no,-3,75,6,Bow,240,18,1.1,yes

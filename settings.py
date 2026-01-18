@@ -12,14 +12,11 @@ WALL_TEXTURE_PATH = "art/walls.png"
 WALL_TEXTURE_SCALE = 0.1
 SAND_TEXTURE_PATH = "art/sand.png"
 SAND_TEXTURE_SCALE = 0.15
-
 KEY_ESCAPE = pygame.K_ESCAPE
 KEY_RESTART = pygame.K_r
 KEY_REFRESH = pygame.K_c
 KEY_START = (pygame.K_SPACE, pygame.K_RETURN)
-
 TIMER_TEXT_COLOR = (245, 245, 245)
-
 LOADING_TEXT = "Loading"
 RESTARTING_TEXT = "Restarting"
 REFRESHING_TEXT = "Refreshing"
@@ -27,10 +24,9 @@ WINNER_FALLBACK_TEXT = "Battle over."
 TIMER_TEXT_FORMAT = "Time: {elapsed:0.1f}s"
 TIMER_BG_TEXTURE_PATH = "art/wood.png"
 TIMER_BG_DARKEN = 0.85
-
 _timer_bg_texture: pygame.Surface | None = None
 
-
+# IZGRADNJA SAŽETOG STANJA SIMULACIJE
 def build_state(
     gladiators,
     pending_offers: dict | None = None,
@@ -65,7 +61,7 @@ def build_state(
         },
     }
 
-
+# CRTANJE TIMERA SIMULACIJE
 def draw_timer(surface: pygame.Surface, font: pygame.font.Font, elapsed: float) -> None:
     timer_text = font.render(TIMER_TEXT_FORMAT.format(elapsed=elapsed).upper(), True, TIMER_TEXT_COLOR)
     timer_rect = timer_text.get_rect(center=(SCREEN_WIDTH // 2, 40))
@@ -80,7 +76,7 @@ def draw_timer(surface: pygame.Surface, font: pygame.font.Font, elapsed: float) 
     draw_wood_panel(surface, bg_rect, radius=10)
     surface.blit(timer_text, timer_rect)
 
-
+# CRTANJE POZADINE GRAFIČKOG SUČELJA
 def draw_wood_panel(surface: pygame.Surface, rect: pygame.Rect, radius: int = 10) -> None:
     global _timer_bg_texture
     if TIMER_BG_TEXTURE_PATH:
@@ -103,7 +99,7 @@ def draw_wood_panel(surface: pygame.Surface, rect: pygame.Rect, radius: int = 10
             return
     pygame.draw.rect(surface, (0, 0, 0), rect, border_radius=radius)
 
-
+# UČITAVANJE LOADING EKRANA IZMEĐU SCENA
 def render_loading(surface: pygame.Surface, font: pygame.font.Font, dots: int, label: str) -> None:
     try:
         bg = pygame.image.load("art/loading.png").convert()

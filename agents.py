@@ -7,7 +7,7 @@ from spade.agent import Agent
 from spade.behaviour import CyclicBehaviour
 from spade.message import Message
 
-
+# DEFINIRANJE CENTRALNOG KOMUNIKACIJSKOG AGENTA
 class ArenaAgent(Agent):
     def __init__(self, jid: str, password: str, intents: dict, state_fn: Callable[[], dict], interval: float = 0.5):
         super().__init__(jid, password)
@@ -19,6 +19,7 @@ class ArenaAgent(Agent):
         self.add_behaviour(self.PushState(self.state_fn, self.interval))
         self.add_behaviour(self.ReceiveIntent(self.intents))
 
+    # SLANJE STANJA SIMULACIJE AGENTIMA
     class PushState(CyclicBehaviour):
         def __init__(self, state_fn: Callable[[], dict], interval: float):
             super().__init__()
@@ -34,6 +35,7 @@ class ArenaAgent(Agent):
                 msg.body = json.dumps(state)
                 await self.send(msg)
 
+    # PRIMANJE PORUKA AGENATA
     class ReceiveIntent(CyclicBehaviour):
         def __init__(self, intents: dict):
             super().__init__()
@@ -50,7 +52,7 @@ class ArenaAgent(Agent):
                 except Exception:
                     pass
 
-
+# DEFINIRANJE AGENTA GLADIJATORA
 class GladiatorAgent(Agent):
     def __init__(self, jid: str, password: str):
         super().__init__(jid, password)
@@ -61,6 +63,7 @@ class GladiatorAgent(Agent):
     async def setup(self):
         self.add_behaviour(self.PlanBehaviour())
 
+    # PONAŠANJA AGENATA
     class PlanBehaviour(CyclicBehaviour):
         async def run(self):
             msg = await self.receive(timeout=1)
@@ -137,9 +140,8 @@ class GladiatorAgent(Agent):
             reply.body = json.dumps(intent)
             await self.send(reply)
 
-
+# POKRETANJE SPADE AGENATA
 async def start_agents(count: int, intents: dict, state_fn: Callable[[], dict]):
-
     arena_agent = ArenaAgent("arena@localhost", "gladiator", intents=intents, state_fn=state_fn, interval=0.5)
     await arena_agent.start()
     gladiators = []
@@ -150,7 +152,7 @@ async def start_agents(count: int, intents: dict, state_fn: Callable[[], dict]):
         gladiators.append(agent)
     return arena_agent, gladiators
 
-
+# GAŠENJE SPADE AGENATA
 async def stop_agents(arena_agent: Agent | None, gladiators: list[Agent]):
     if arena_agent:
         await arena_agent.stop()

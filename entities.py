@@ -6,7 +6,6 @@ import pygame
 import settings
 TEAM_SYMBOL_NAMES = ["Square", "Diamond", "Triangle", "Star"]
 
-
 # INICIJALIZIRANJE KLASE ORUŽJA
 class Weapon:
     def __init__(self, name: str, damage: int, range_px: float, cooldown: float, ranged: bool = False, projectile_speed: float = 0.0):
@@ -16,7 +15,6 @@ class Weapon:
         self.cooldown = cooldown
         self.ranged = ranged
         self.projectile_speed = projectile_speed
-
 
 # INICIJALIZIRANJE KLASE PROJEKTILA ORUŽJA
 class Projectile:
@@ -59,7 +57,7 @@ class Projectile:
         tail = self.position - dir_vec * 6
         pygame.draw.line(surface, (10, 10, 10), tail, tip, width=2)
 
-
+# INICIJALIZIRANJE KLASE GLADIJATORA
 class Gladiator:
     def __init__(
         self,
@@ -120,6 +118,7 @@ class Gladiator:
         if not self.alive:
             return
 
+        # AŽURIRANJE VREMENSKIH PARAMETARA
         self.cooldown_timer = max(0.0, self.cooldown_timer - dt)
         if self.retreating:
             self.sprint_timer = max(0.0, self.sprint_timer - dt)
@@ -134,6 +133,7 @@ class Gladiator:
             if self.shield_timer <= 0:
                 self.shield_active = False
 
+        # ODLUKA O AKTIVIRANJU ŠTITA
         if allow_shield and self.class_type in ("Fighter", "Tank") and not self.shield_active and self.shield_cooldown <= 0.0:
             if self._incoming_attack(gladiators, targeted_by or set()):
                 duration, cooldown = self._shield_params()
@@ -141,6 +141,7 @@ class Gladiator:
                 self.shield_timer = duration
                 self.shield_cooldown = cooldown
 
+        # AKTIVIRANJE POVLAČENJA AGENTA
         if allow_engage:
             should_retreat = self._should_retreat(gladiators)
             if should_retreat and not self.retreating:
@@ -153,6 +154,7 @@ class Gladiator:
         else:
             self.retreating = False
 
+        # PROVJERA POSTOJANJA PROTIVNIKA
         target = None
         if allow_engage:
             if intent and intent.get("target"):
@@ -162,6 +164,7 @@ class Gladiator:
         offset = target.position - self.position if target else pygame.Vector2()
         distance = offset.length()
 
+        # ODREĐIVANJE SMJERA KRETANJA AGENTA
         desired = pygame.Vector2()
         if self.retreating:
             flee_dir = self._flee_direction(gladiators)
@@ -196,6 +199,7 @@ class Gladiator:
                     self.wander_timer = random.uniform(0.8, 2.0)
                 desired = self.wander_dir
 
+        # ODREĐIVANJE BRZINE KRETANJA AGENTA
         jitter = pygame.Vector2(random.uniform(-0.35, 0.35), random.uniform(-0.35, 0.35))
         speed = self.speed
         if self.retreating and self.sprint_timer > 0:
@@ -206,6 +210,7 @@ class Gladiator:
             speed *= 0.7
         self.velocity = (desired + jitter) * speed
 
+        # RAZDVAJANJE AGENATA
         separation = pygame.Vector2()
         for other in gladiators:
             if other is self or not other.alive:
@@ -216,10 +221,10 @@ class Gladiator:
         if separation.length_squared() > 0:
             separation = separation.normalize() * self.speed
             self.velocity = (self.velocity + separation * 0.7) * 0.6
-
         self.position += self.velocity * dt
         self._clamp_to_arena()
 
+    # ODLUKA O SLJEDEĆEM PROTIVNIKU
     def _pick_target(self, gladiators: list["Gladiator"]) -> "Gladiator | None":
         living = [
             g
@@ -232,6 +237,7 @@ class Gladiator:
             return self.last_attacker
         return min(living, key=lambda g: self.distance_to(g))
 
+    # ODLUKA O NAPADU PROTIVNIKA
     def _attack(self, target: "Gladiator", projectiles: list[Projectile]) -> None:
         if self.cooldown_timer > 0.0 or not target.alive:
             return
@@ -249,15 +255,16 @@ class Gladiator:
             mitigated = max(1, int(raw_damage - target.armor * 0.25))
             target.apply_damage(mitigated, self)
 
+    # ODLUKA O POVLAČENJU AGENTA
     def _should_retreat(self, gladiators: list["Gladiator"]) -> bool:
         if self.hp <= 0:
             return False
-
         if self.retreat_uses >= 1 or self.retreat_cooldown > 0:
             return False
         hp_ratio = self.hp / max(1, self.max_hp)
         return hp_ratio <= 0.66
 
+    # IZRAČUN SMJERA POVLAČENJA
     def _flee_direction(self, gladiators: list["Gladiator"]) -> pygame.Vector2:
         away = pygame.Vector2()
         for g in gladiators:
@@ -272,6 +279,7 @@ class Gladiator:
             return away.normalize()
         return pygame.Vector2()
 
+    # OGRANIČAVANJE KRETANJA AGENATA
     def _clamp_to_arena(self) -> None:
         offset = self.position - settings.ARENA_CENTER
         dist = offset.length()
@@ -279,47 +287,38 @@ class Gladiator:
         if dist > limit and dist > 0:
             self.position = settings.ARENA_CENTER + offset.normalize() * limit
 
+    # CRTANJE SVIH TEKSTURA U SIMULACIJI
     def draw(
         self,
         surface: pygame.Surface,
         font: pygame.font.Font,
-        fighter_texture: pygame.Surface | None = None,
-        tank_texture: pygame.Surface | None = None,
-        archer_texture: pygame.Surface | None = None,
-        fighter_texture_dead: pygame.Surface | None = None,
-        tank_texture_dead: pygame.Surface | None = None,
-        archer_texture_dead: pygame.Surface | None = None,
+        fighter_texture: pygame.Surface,
+        tank_texture: pygame.Surface,
+        archer_texture: pygame.Surface,
+        fighter_texture_dead: pygame.Surface,
+        tank_texture_dead: pygame.Surface,
+        archer_texture_dead: pygame.Surface,
     ) -> None:
-        has_fighter_texture = self.class_type == "Fighter" and fighter_texture is not None
-        has_tank_texture = self.class_type == "Tank" and tank_texture is not None
-        has_archer_texture = self.class_type == "Archer" and archer_texture is not None
         if not self.alive:
-            if self.class_type == "Fighter" and fighter_texture_dead is not None:
-                texture_rect = fighter_texture_dead.get_rect(center=(self.position.x, self.position.y))
-                surface.blit(fighter_texture_dead, texture_rect)
-                return
-            if self.class_type == "Tank" and tank_texture_dead is not None:
-                texture_rect = tank_texture_dead.get_rect(center=(self.position.x, self.position.y))
-                surface.blit(tank_texture_dead, texture_rect)
-                return
-            if self.class_type == "Archer" and archer_texture_dead is not None:
-                texture_rect = archer_texture_dead.get_rect(center=(self.position.x, self.position.y))
-                surface.blit(archer_texture_dead, texture_rect)
-                return
-            pygame.draw.circle(surface, (80, 80, 80), self.position, self.radius)
-            return
-        if not has_fighter_texture and not has_tank_texture and not has_archer_texture:
-            pygame.draw.circle(surface, (80, 80, 80), self.position, self.radius)
-        if has_fighter_texture or has_tank_texture or has_archer_texture:
-            if has_fighter_texture:
-                texture = fighter_texture
-            elif has_tank_texture:
-                texture = tank_texture
+            if self.class_type == "Fighter":
+                texture = fighter_texture_dead
+            elif self.class_type == "Tank":
+                texture = tank_texture_dead
             else:
-                texture = archer_texture
+                texture = archer_texture_dead
             texture_rect = texture.get_rect(center=(self.position.x, self.position.y))
             surface.blit(texture, texture_rect)
+            return
+        if self.class_type == "Fighter":
+            texture = fighter_texture
+        elif self.class_type == "Tank":
+            texture = tank_texture
+        else:
+            texture = archer_texture
+        texture_rect = texture.get_rect(center=(self.position.x, self.position.y))
+        surface.blit(texture, texture_rect)
 
+        # CRTANJE TRAKE RAZINE ŽIVOTA AGENATA
         bar_width = int(self.radius * 2.6)
         bar_height = 10
         bar_x = self.position.x - bar_width / 2
@@ -333,6 +332,7 @@ class Gladiator:
         pygame.draw.rect(surface, hp_color, (bar_x, bar_y, bar_width * hp_ratio, bar_height))
         pygame.draw.rect(surface, (0, 0, 0), (bar_x, bar_y, bar_width, bar_height), width=1)
 
+        # ODREĐIVANJE POZICIJA LABELA AGENATA
         if self.team_id:
             symbol_idx = max(0, (self.team_id - 1) % len(TEAM_SYMBOL_NAMES))
             symbol_y = bar_y + bar_height / 2
@@ -341,7 +341,7 @@ class Gladiator:
                 sym_color = (200, 40, 40)
             else:
                 sym_color = (20, 20, 20)
-            self._draw_symbol(surface, symbol_idx, symbol_x, symbol_y, size=14, color=sym_color, filled=True)
+            self._draw_symbol(surface, symbol_idx, symbol_x, symbol_y, size=14, color=sym_color)
 
         name_color = (0, 0, 0)
         label = self.name[1:] if self.name.startswith("G") else self.name
@@ -352,9 +352,10 @@ class Gladiator:
         name_rect = name_text.get_rect(midright=(bar_x - 6, bar_y + bar_height / 2))
         surface.blit(name_text, name_rect)
 
-    def _draw_symbol(self, surface: pygame.Surface, idx: int, cx: float, cy: float, size: int, color: tuple[int, int, int], filled: bool = False) -> None:
+    # CRTANJE SIMBOLA TIMOVA
+    def _draw_symbol(self, surface: pygame.Surface, idx: int, cx: float, cy: float, size: int, color: tuple[int, int, int]) -> None:
         shape = idx % len(TEAM_SYMBOL_NAMES)
-        width = 0 if filled else 2
+        width = 0
         if shape == 0:
             rect = pygame.Rect(0, 0, size, size)
             rect.center = (cx, cy)
@@ -378,12 +379,13 @@ class Gladiator:
             pygame.draw.polygon(surface, color, points, width=width)
         else:
             radius = size // 2
-            pygame.draw.circle(surface, color, (cx, cy), radius, width=0 if filled else 2)
+            pygame.draw.circle(surface, color, (cx, cy), radius, width=0)
 
     def _random_dir(self) -> pygame.Vector2:
         angle = random.uniform(0, 2 * math.pi)
         return pygame.Vector2(math.cos(angle), math.sin(angle))
 
+    # PRIMANJE ŠTETE GLADIJATORA
     def apply_damage(self, amount: int, attacker: "Gladiator") -> None:
         if self.shield_active:
             self.shield_active = False
@@ -395,6 +397,7 @@ class Gladiator:
         self.last_attacker = attacker
         self.last_hit_time = time.time()
 
+    # PROCJENA PRIJETNJE NAPADA
     def _incoming_attack(self, gladiators: list["Gladiator"], targeted_by: set[str]) -> bool:
         for other in gladiators:
             if other is self or not other.alive:
@@ -412,6 +415,7 @@ class Gladiator:
                 return True
         return False
 
+    # DEFINIRANJE PARAMETARA ŠTITA
     def _shield_params(self) -> tuple[float, float]:
         if self.class_type == "Tank":
             return 0.45, 2.2

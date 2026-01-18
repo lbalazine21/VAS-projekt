@@ -22,7 +22,6 @@ from settings import (
     RESTARTING_TEXT,
 )
 
-
 def run() -> None:
     pygame.init()
     info = pygame.display.Info()
@@ -36,6 +35,7 @@ def run() -> None:
     font = pygame.font.SysFont("times new roman", 18)
     big_font = pygame.font.SysFont("times new roman", 36)
 
+    # POSTAVLJANJE TEKSTURA POZADINE I ZIDOVA
     def build_backgrounds(size: tuple[int, int]):
         bg_image = pygame.image.load("art/rocks.png").convert()
         bg_scale = 0.5
@@ -62,29 +62,16 @@ def run() -> None:
         return bg_surface, wall_texture, sand_texture
 
     bg_surface, wall_texture, sand_texture = build_backgrounds(target_size)
-    fighter_texture = None
-    try:
-        fighter_texture = pygame.image.load("art/fighter.png").convert_alpha()
-    except Exception:
-        fighter_texture = None
-    tank_texture = None
-    try:
-        tank_texture = pygame.image.load("art/tank.png").convert_alpha()
-    except Exception:
-        tank_texture = None
-    archer_texture = None
-    try:
-        archer_texture = pygame.image.load("art/archer.png").convert_alpha()
-    except Exception:
-        archer_texture = None
+
+    # POSTAVLJANJE TEKSTURA AGENATA
+    fighter_texture = pygame.image.load("art/fighter.png").convert_alpha()
+    tank_texture = pygame.image.load("art/tank.png").convert_alpha()
+    archer_texture = pygame.image.load("art/archer.png").convert_alpha()
     texture_size = int(settings.GLADIATOR_RADIUS * 2 * settings.GLADIATOR_TEXTURE_SCALE)
     if texture_size > 0:
-        if fighter_texture is not None:
-            fighter_texture = pygame.transform.smoothscale(fighter_texture, (texture_size, texture_size))
-        if tank_texture is not None:
-            tank_texture = pygame.transform.smoothscale(tank_texture, (texture_size, texture_size))
-        if archer_texture is not None:
-            archer_texture = pygame.transform.smoothscale(archer_texture, (texture_size, texture_size))
+        fighter_texture = pygame.transform.smoothscale(fighter_texture, (texture_size, texture_size))
+        tank_texture = pygame.transform.smoothscale(tank_texture, (texture_size, texture_size))
+        archer_texture = pygame.transform.smoothscale(archer_texture, (texture_size, texture_size))
     def make_grayscale(surface: pygame.Surface) -> pygame.Surface:
         gray = surface.copy()
         try:
@@ -103,6 +90,7 @@ def run() -> None:
     tank_texture_dead = make_grayscale(tank_texture) if tank_texture is not None else None
     archer_texture_dead = make_grayscale(archer_texture) if archer_texture is not None else None
 
+    # DEFINIRANJE PARAMETARA SIMULACIJE
     gladiator_count = GLADIATOR_COUNT
     gladiators = spawn_gladiators(gladiator_count)
     projectiles: list[Projectile] = []
@@ -121,6 +109,7 @@ def run() -> None:
     loading_start = time.time()
     loading_text = LOADING_TEXT
 
+    # PRIKAZIVANJE SIMULACIJE NAKON POKRETANJA SPADE AGENATA
     def start_spade_agents_blocking(label: str):
         nonlocal arena_agent, gladiator_agents, spade_enabled, loading, loading_text, loading_start
         loading_text = label
@@ -130,6 +119,7 @@ def run() -> None:
             return
         done = threading.Event()
 
+        # INICIJALIZIRANJE SPADE KOMUNIKACIJE 
         async def runner():
             nonlocal arena_agent, gladiator_agents, spade_enabled, loading
             try:
@@ -157,6 +147,7 @@ def run() -> None:
             pygame.time.delay(150)
             pygame.event.pump()
 
+    # ZAUSTAVLJANJE SPADE AGENATA U SIMULACIJI
     def stop_spade_agents():
         nonlocal arena_agent, gladiator_agents
         if arena_agent or gladiator_agents:
@@ -168,6 +159,7 @@ def run() -> None:
         arena_agent = None
         gladiator_agents = []
 
+    # POTPUNO GAŠENJE SPADE SUSTAVA
     def shutdown_spade_loop():
         try:
             async def _shutdown():
@@ -194,6 +186,7 @@ def run() -> None:
         pending_offers.clear()
         offer_visuals.clear()
 
+    # STANJE ARENE NAKON RESETIRANJA KLASA
     def reset_state(keep_classes: bool, loading_label: str) -> None:
         nonlocal gladiators, loading, finished, started, paused, engage_delay, elapsed
         nonlocal team_counter, betrayal_pending, betrayal_timer, winner_text
@@ -240,6 +233,7 @@ def run() -> None:
 
     start_spade_agents_blocking("Loading")
 
+    # POVEZIVANJE GUMBOVA S OPCIJAMA SIMULACIJE
     while running:
         dt = clock.tick(FPS) / 1000.0
         if started and not finished and not paused:
@@ -268,6 +262,8 @@ def run() -> None:
                         paused = False
                     else:
                         paused = not paused
+
+            # IMPLEMENTACIJA GUMBA ZA EXPORTANJE PODATAKA            
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and finished and export_button_rect:
                 if export_button_rect.collidepoint(event.pos):
                     os.makedirs("logs", exist_ok=True)
@@ -313,6 +309,8 @@ def run() -> None:
                             )
                     export_message_time = time.time()
                     export_message_name = os.path.basename(filename)
+
+            # PROMJENA VELIČINE EKRANA        
             if event.type == pygame.VIDEORESIZE:
                 target_size = (event.w, event.h)
                 screen = pygame.display.set_mode(target_size, pygame.RESIZABLE)
@@ -330,6 +328,8 @@ def run() -> None:
                 bg_surface, wall_texture, sand_texture = build_backgrounds(target_size)
 
         if started and not finished and not paused:
+
+            # PRAĆENJE FAZE PREGOVARANJA I STANJA TIMOVA
             if engage_delay > 0:
                 engage_delay = max(0.0, engage_delay - dt)
             negotiating = engage_delay > 0
@@ -345,6 +345,7 @@ def run() -> None:
             def can_create_team() -> bool:
                 return team_counter <= max_teams
 
+            # IZDAJA TIMA TIJEKOM BORBE
             team_counts = {}
             for g in gladiators:
                 if g.alive and g.team_id is not None:
@@ -381,6 +382,7 @@ def run() -> None:
                         if gg.alive and gg.team_id is not None:
                             team_counts[gg.team_id] = team_counts.get(gg.team_id, 0) + 1
 
+            # FILTRIRANJE I AŽURIRANJE LINIJA PREGOVORA
             now = time.time()
             offer_visuals[:] = [v for v in offer_visuals if v.get("expires", now + 1) > now]
 
@@ -393,6 +395,7 @@ def run() -> None:
                         return
                 offer_visuals.append({"from": frm, "to": to, "color": color, "expires": expires})
 
+            # GLAVNI DIO PREGOVARANJA
             if negotiating:
                 for name, entry in list(intents.items()):
                     data = entry.get("data", {})
@@ -402,7 +405,6 @@ def run() -> None:
                         proposer = glad_by_name.get(name)
                         target = glad_by_name.get(target_name)
                         if proposer and target and proposer.alive and target.alive:
-
                             proposer_size = team_size(proposer.team_id) or 1
                             target_size = team_size(target.team_id) or 1
                             if proposer_size < 3 and target_size < 3 and (proposer.team_id is None or proposer.team_id != target.team_id):
@@ -457,12 +459,14 @@ def run() -> None:
                             upsert_visual(proposer.name, responder.name, (200, 70, 70), ttl=1.0)
                         intents.pop(name, None)
 
+            # ANALIZA TRENUTNOG STANJA PREŽIVJELIH AGENATA
             living = [g for g in gladiators if g.alive]
             alive_team_ids = {g.team_id for g in living if g.team_id is not None}
             solo_alive = [g for g in living if g.team_id is None]
             single_team_only = len(alive_team_ids) == 1 and len(solo_alive) == 0
             should_consider_betrayal = len(living) > 1 and single_team_only and engage_delay <= 0
 
+            # PROVJERA MOGUĆNOSTI ZAVRŠNE IZDAJE
             if should_consider_betrayal:
                 if not betrayal_pending:
                     betrayal_pending = True
@@ -471,7 +475,8 @@ def run() -> None:
                 else:
                     betrayal_timer = max(0.0, betrayal_timer - dt)
                     if betrayal_timer <= 0:
-
+                        
+                        # AGENT KOJI MOŽE IZDATI NA KRAJU BITKE
                         max_hp = max(g.hp for g in living)
                         eligible = [
                             g
@@ -493,7 +498,6 @@ def run() -> None:
                             betrayal_pending = False
                             clear_offers()
                         else:
-
                             team_id = next(iter(alive_team_ids))
                             finished = True
                             winner_text = f"{team_label(team_id)} wins"
@@ -501,6 +505,8 @@ def run() -> None:
                             clear_offers()
             else:
                 betrayal_pending = False
+
+            # PROVJERA ZAVRŠETKA I ODREĐIVANJE POBJEDNIKA
             living = [g for g in gladiators if g.alive]
             if len(living) <= 1:
                 finished = True
@@ -512,6 +518,8 @@ def run() -> None:
                         winner_text = f"Champion: {lone.name}"
                 else:
                     winner_text = "Everyone fell."
+
+            # GLAVNI DIO PONAŠANJA GLADIJATORA
             else:
                 alive_names = {g.name for g in living}
                 targeting: dict[str, str] = {}
@@ -572,6 +580,8 @@ def run() -> None:
                 tank_texture_dead,
                 archer_texture_dead,
             )
+
+        # CRTANJE ZAVRŠNOG EKRANA S POBJEDNICIMA
         if finished:
             winner_label = (winner_text or settings.WINNER_FALLBACK_TEXT).upper()
             winner_text_surf = big_font.render(winner_label, True, (255, 255, 255))
@@ -628,6 +638,7 @@ def run() -> None:
         else:
             export_button_rect = None
 
+        # CRTANJE TIMERA
         draw_timer(screen, font, elapsed)
 
         pygame.display.flip()
